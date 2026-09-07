@@ -8,7 +8,13 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-# 1. CloudWatch-friendly structured logging
+# IMPORT DOTENV TO READ THE .env FILE
+from dotenv import load_dotenv
+
+# 1. Load the hidden .env file into the environment
+load_dotenv()
+
+# 2. CloudWatch-friendly structured logging
 logging.basicConfig(
     stream=sys.stdout,
     level=logging.INFO,
@@ -16,9 +22,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger("finpulze-engine")
 
+# 3. STRICT SECRET PULLING (NO HARDCODING ALLOWED)
+DATABASE_URL = os.getenv("DATABASE_URL")
+PAYMENT_GATEWAY_SECRET = os.getenv("PAYMENT_GATEWAY_SECRET")
+
+# If the .env file is missing or empty, kill the app instantly!
+if not DATABASE_URL or not PAYMENT_GATEWAY_SECRET:
+    logger.error("CRITICAL FATAL ERROR: Missing environment variables.")
+    logger.error("You MUST create a .env file with DATABASE_URL and PAYMENT_GATEWAY_SECRET to run this application securely.")
+    sys.exit(1)
+
 app = FastAPI(title="FinPulze Global Payments", version="1.2.0")
 
-# 2. In-memory storage & 13 Global Exchange Rates (Base NGN)
+# 4. In-memory storage & 13 Global Exchange Rates (Base NGN)
 EXCHANGE_RATES = {
     "NGN": 1.0,       # Nigerian Naira
     "USD": 1500.0,    # US Dollar
@@ -43,10 +59,6 @@ CURRENCY_SYMBOLS = {
 
 USERS_DB = {}
 TRANSACTIONS_DB = []
-
-# Config / Secrets verification
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://finpulze_admin:dummy_pass@db.internal:5432/finpulze")
-PAYMENT_GATEWAY_SECRET = os.getenv("PAYMENT_GATEWAY_SECRET", "dummy_secret_key")
 
 # --- STRICT PYDANTIC SCHEMAS ---
 class AuthRequest(BaseModel):
