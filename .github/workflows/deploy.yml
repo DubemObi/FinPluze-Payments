@@ -38,6 +38,6 @@ jobs:
 
             sudo docker run -d \
               --name finpulze-app \
-              --env-file /home/ubuntu/app/.env \
+              --env-file /home/ubuntu/.env \
               -p 127.0.0.1:8000:8000 \
               finpulze-app
