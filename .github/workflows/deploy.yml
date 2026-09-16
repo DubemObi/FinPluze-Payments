@@ -21,3 +21,23 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "."
           target: "/home/ubuntu/app"
+
+      - name: Deploy Docker container
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/app
+
+            sudo docker stop finpulze-app || true
+            sudo docker rm finpulze-app || true
+
+            sudo docker build -t finpulze-app .
+
+            sudo docker run -d \
+              --name finpulze-app \
+              --env-file /home/ubuntu/app/.env \
+              -p 127.0.0.1:8000:8000 \
+              finpulze-app
