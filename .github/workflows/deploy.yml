@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Docker image
-        run: docker build -t app:scan .
+        run: docker build -t finpulze-app:scan .
 
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@master
