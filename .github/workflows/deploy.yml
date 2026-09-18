@@ -23,8 +23,8 @@ jobs:
           image-ref: finpulze-app:scan
           format: table
           exit-code: '1'
-          ignore-unfixed: true
           severity: CRITICAL
+          vuln-type: 'os,library'
 
   deploy:
     name: Deploy to EC2
