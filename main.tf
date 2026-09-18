@@ -174,10 +174,102 @@ resource "aws_instance" "ubuntu_server" {
     aws_security_group.web_security_group.id
   ]
 
+  iam_instance_profile = aws_iam_instance_profile.ec2_s3_profile.name
+
   tags = {
     Name      = "dev-ubuntu-server"
     ManagedBy = "Terraform"
   }
+}
+
+# -------------------------
+# S3 Backup Bucket
+# -------------------------
+
+resource "aws_s3_bucket" "backup" {
+  bucket = "dev-finpulze-backup-dubem"
+
+  tags = {
+    Name      = "dev-finpulze-backup"
+    ManagedBy = "Terraform"
+  }
+}
+
+# -------------------------
+# IAM Role for EC2 S3 Access
+# -------------------------
+
+resource "aws_iam_role" "ec2_s3_role" {
+  name = "dev-ec2-s3-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# -------------------------
+# S3 Write Policy
+# -------------------------
+
+resource "aws_iam_role_policy" "ec2_s3_write" {
+  name = "dev-ec2-s3-write"
+  role = aws_iam_role.ec2_s3_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject"
+        ]
+        Resource = "${aws_s3_bucket.backup.arn}/*"
+      }
+    ]
+  })
+}
+
+# -------------------------
+# EC2 Instance Profile
+# -------------------------
+
+resource "aws_iam_instance_profile" "ec2_s3_profile" {
+  name = "dev-ec2-s3-profile"
+  role = aws_iam_role.ec2_s3_role.name
+}
+
+
+# -------------------------
+# CloudWatch CPU Alarm
+# -------------------------
+
+resource "aws_cloudwatch_metric_alarm" "high_cpu" {
+  alarm_name        = "dev-ubuntu-high-cpu"
+  alarm_description = "Alarm when EC2 CPU utilization exceeds 80%"
+
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "CPUUtilization"
+  namespace           = "AWS/EC2"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 80
+
+  dimensions = {
+    InstanceId = aws_instance.ubuntu_server.id
+  }
+
+  alarm_actions = []
+  ok_actions    = []
 }
 
 # -------------------------
