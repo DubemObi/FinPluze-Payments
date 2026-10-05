@@ -137,7 +137,7 @@ resource "aws_security_group" "web_security_group" {
     ManagedBy = "Terraform"
   }
 }
-
+]
 # -------------------------
 # Ubuntu AMI
 # -------------------------
