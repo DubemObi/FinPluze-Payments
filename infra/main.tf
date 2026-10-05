@@ -184,6 +184,8 @@ resource "aws_instance" "ubuntu_server" {
 
   # user_data = file("${path.module}/script.sh")
 
+# new line for test
+
   user_data = <<EOF
 #!/bin/bash
 # Exit immediately if a command exits with a non-zero status
