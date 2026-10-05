@@ -10,7 +10,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "eu-west-2"
+  region = var.aws_region
 }
 
 # -------------------------
@@ -18,7 +18,7 @@ provider "aws" {
 # -------------------------
 
 resource "aws_vpc" "main_network" {
-  cidr_block           = "10.0.0.0/16"
+  cidr_block           = var.cidr_blocks[0]
   enable_dns_support   = true
   enable_dns_hostnames = true
 
@@ -47,7 +47,7 @@ resource "aws_internet_gateway" "main_gateway" {
 
 resource "aws_subnet" "public_subnet" {
   vpc_id                  = aws_vpc.main_network.id
-  cidr_block              = "10.0.1.0/24"
+  cidr_block              = var.cidr_blocks[1]
   availability_zone       = "eu-west-2a"
   map_public_ip_on_launch = true
 
@@ -65,7 +65,7 @@ resource "aws_route_table" "public_route_table" {
   vpc_id = aws_vpc.main_network.id
 
   route {
-    cidr_block = "0.0.0.0/0"
+    cidr_block = var.cidr_blocks[2]
     gateway_id = aws_internet_gateway.main_gateway.id
   }
 
@@ -88,6 +88,10 @@ resource "aws_route_table_association" "public_subnet_association" {
 # Security Group
 # -------------------------
 
+data "http" "my_ip" {
+  url = "https://ipv4.icanhazip.com"
+}
+
 resource "aws_security_group" "web_security_group" {
   name        = "dev-web-security-group"
   description = "Allow HTTP, HTTPS and SSH traffic"
@@ -99,7 +103,7 @@ resource "aws_security_group" "web_security_group" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [("${chomp(data.http.my_ip.response_body)}/32")]
   }
 
   # HTTP
@@ -165,8 +169,8 @@ data "aws_ami" "ubuntu" {
 
 resource "aws_instance" "ubuntu_server" {
   ami           = data.aws_ami.ubuntu.id
-  instance_type = "t3.micro"
-  key_name      = "dev-ubuntu-key"
+  instance_type = var.instance_type
+  key_name      = var.key_name
 
   subnet_id = aws_subnet.public_subnet.id
 
@@ -175,6 +179,35 @@ resource "aws_instance" "ubuntu_server" {
   ]
 
   iam_instance_profile = aws_iam_instance_profile.ec2_s3_profile.name
+
+  # user_data = file("script.sh")
+
+  # user_data = file("${path.module}/script.sh")
+
+  user_data = <<EOF
+#!/bin/bash
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# Update and install dependencies
+apt-get update -y
+apt-get install -y nginx unzip curl
+
+# Install AWS CLI into a safe directory
+cd /tmp
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip -o awscliv2.zip
+./aws/install
+
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+
+# Configure Docker permissions
+usermod -aG docker ubuntu
+systemctl enable docker
+systemctl start docker
+EOF
 
   tags = {
     Name      = "dev-ubuntu-server"
