@@ -21,3 +21,6 @@ sh get-docker.sh
 usermod -aG docker ubuntu
 systemctl enable docker
 systemctl start docker
+
+
+
